@@ -5,7 +5,7 @@ use std::path::PathBuf;
 /// builds hunspell in the `vendor` git submodule with the
 /// `cc` crate: ignore any hunspell's build-scripts and
 /// just compile the source code to a static lib.
-/// 
+///
 /// Note: list of *.cxx files might need to be updated,
 /// if `vendor` git submodule is updated
 #[cfg(feature = "bundled")]
@@ -22,9 +22,11 @@ fn build_or_find_hunspell() -> Result<bindgen::Builder, Box<dyn Error>> {
         println!("cargo:rustc-link-lib={}", link);
     }
 
-    println!("cargo:rustc-link-lib=static=hunspell-1.7");
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
 
-    cc::Build::new()
+    println!("cargo:rustc-link-lib=static=hunspell-1.7");
+    let mut builder = cc::Build::new();
+    builder
         .file("vendor/src/hunspell/affentry.cxx")
         .file("vendor/src/hunspell/affixmgr.cxx")
         .file("vendor/src/hunspell/csutil.cxx")
@@ -36,8 +38,14 @@ fn build_or_find_hunspell() -> Result<bindgen::Builder, Box<dyn Error>> {
         .file("vendor/src/hunspell/replist.cxx")
         .file("vendor/src/hunspell/suggestmgr.cxx")
         .define("BUILDING_LIBHUNSPELL", "1")
-        .cpp(true)
-        .compile("hunspell-1.7");
+        .cpp(true);
+
+    if target_os == "wasi" {
+        println!("cargo:rustc-link-lib=wasi-emulated-process-clocks");
+        builder.define("_WASI_EMULATED_PROCESS_CLOCKS", "1");
+    }
+
+    builder.compile("hunspell-1.7");
 
     Ok(bindgen::Builder::default().clang_arg(format!("-I{}", "vendor/src")))
 }
@@ -53,7 +61,6 @@ fn build_or_find_hunspell() -> Result<bindgen::Builder, Box<dyn Error>> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    
     let builder = build_or_find_hunspell()?;
 
     let bindings = builder
