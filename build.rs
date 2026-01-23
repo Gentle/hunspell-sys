@@ -10,9 +10,10 @@ use std::path::PathBuf;
 /// if `vendor` git submodule is updated
 #[cfg(feature = "bundled")]
 fn build_or_find_hunspell() -> Result<bindgen::Builder, Box<dyn Error>> {
-    let libcpp = if cfg!(target_os = "macos") {
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+    let libcpp = if target_os == "macos" {
         Some("dylib=c++")
-    } else if cfg!(target_os = "linux") {
+    } else if target_os == "linux" {
         Some("dylib=stdc++")
     } else {
         None
@@ -38,7 +39,7 @@ fn build_or_find_hunspell() -> Result<bindgen::Builder, Box<dyn Error>> {
         .define("BUILDING_LIBHUNSPELL", "1")
         .cpp(true);
 
-    if env::var("CARGO_CFG_TARGET_OS").unwrap() == "wasi" {
+    if target_os == "wasi" {
         println!("cargo:rustc-link-lib=wasi-emulated-process-clocks");
         println!("cargo:rustc-link-lib=static=c++");
         println!("cargo:rustc-link-lib=static=c++abi");
